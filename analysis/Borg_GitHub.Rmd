@@ -1,0 +1,122 @@
+---
+title: "Meta-analysis Criterion validity"
+author: "Stefano Berrone"
+date: "2025-09-10"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+## Introduction
+
+This is part of a meta-analysis of a larger systematic review about the measurement properties of the Borg scales. In this analysis, we meta-analysed the correlation coefficients (treated as effect size) of the studies that about *Criterion Validity* of the *Borg 6-20 scale*.
+
+## Code & output
+
+
+### Install packages
+
+```{r, install/load packages }
+install.packages(c("readxl", "dplyr", "metafor"), dependencies = TRUE)
+
+library(readxl)
+library(dplyr)
+library(metafor)
+
+```
+
+
+### Import data
+
+```{r, Import data}
+borg <- read_excel("Data_Borg.xlsx")
+
+library(knitr)
+kable(borg, caption = "Borg dataset")
+```
+
+
+### Cleaning (ensure numeric r and n)
+
+```{r, Data cleaning}
+to_num <- function(x) {
+  if (is.numeric(x)) return(x)
+  x <- gsub(",", ".", as.character(x))
+  suppressWarnings(as.numeric(x))
+}
+
+borg <- borg %>%
+  mutate(
+    r            = to_num(r),
+    n            = to_num(n),
+    validity_type = as.character(validity_type),
+    comparator    = as.character(comparator),
+    prom          = as.character(prom),
+    author_year   = as.character(author_year)
+  )
+
+```
+
+### Analysis. Filter: criterion validity + Borg 6–20
+
+```{r}
+criterion <- borg %>%
+  filter(validity_type == "criterion") %>%
+  filter(prom != "BorgCR10")
+```
+
+
+### Compute Fisher's Z effect sizes for r
+
+```{r}
+criterion_es <- escalc(
+  measure = "ZCOR",
+  ri = r,
+  ni = n,
+  data = criterion
+)
+```
+
+
+### Fit random-effects meta-analysis
+
+```{r}
+res <- rma(yi, vi, data = criterion_es, method = "REML")
+
+print(summary(res))
+print(predict(res, transf = transf.ztor))
+```
+
+
+### Forest plot 
+
+```{r}
+slabs <- criterion$author_year
+forest(
+  res,
+  slab   = slabs,
+  xlab   = "Correlation (r)",
+  transf = transf.ztor
+)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
